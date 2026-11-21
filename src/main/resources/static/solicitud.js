@@ -10,12 +10,6 @@ const errorMateria = document.querySelector("#error-materia");
 const buscadorCatalogo = document.querySelector("#buscar-materia-catalogo");
 const botonesCatalogo = document.querySelectorAll(".catalogo-boton");
 
-// Permite buscar tanto "Matematicas" como "Matemáticas".
-function normalizarNombre(texto) {
-    return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase().replace(/\s+/g, " ").trim();
-}
-
 function mostrarErrorMateria(mensaje) {
     errorMateria.textContent = mensaje;
     errorMateria.hidden = !mensaje;
@@ -91,7 +85,7 @@ function agregarMateria() {
     // El nombre se toma del catálogo para enviarlo igual que está en la BD.
     let nombreCatalogo = "";
     for (const boton of botonesCatalogo) {
-        if (normalizarNombre(boton.getAttribute("data-nombre")) === normalizarNombre(nombreIngresado)) {
+        if (boton.getAttribute("data-nombre").toLowerCase() === nombreIngresado.toLowerCase()) {
             nombreCatalogo = boton.getAttribute("data-nombre");
             break;
         }
@@ -124,10 +118,10 @@ for (const boton of botonesCatalogo) {
 }
 
 buscadorCatalogo.addEventListener("input", () => {
-    const busqueda = normalizarNombre(buscadorCatalogo.value);
+    const busqueda = buscadorCatalogo.value.trim().toLowerCase();
     let encontrados = 0;
     for (const boton of botonesCatalogo) {
-        const coincide = normalizarNombre(boton.getAttribute("data-nombre")).includes(busqueda);
+        const coincide = boton.getAttribute("data-nombre").toLowerCase().includes(busqueda);
         boton.parentElement.hidden = !coincide;
         if (coincide) encontrados++;
     }

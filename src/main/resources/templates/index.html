@@ -1,29 +1,5 @@
-<!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Inicio - Salud</title>
-</head>
-
-<body>
-
-    <h1>Sistema de Salud</h1>
-
-    <p>Bienvenido al sistema de reservas médicas.</p>
-
-    <p>Seleccione una opción:</p>
-
-    <a th:href="@{/inicio-sesion}">
-        <button type="button">Iniciar sesión</button>
-    </a>
-
-    <a th:href="@{/usuarios/nuevo}">
-        <button type="button">Registrarse</button>
-    </a>
-
-</body>
-
-</html>
+<!doctype html><html lang="es" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Horarios académicos</title><link rel="stylesheet" href="/academico.css?v=3"></head><body><header class="app-header"><nav aria-label="Navegación principal"><a class="brand" href="/"><span class="brand-mark" aria-hidden="true">▦</span>Horarios<span class="brand-detail">académicos</span></a><a class="nav-link" href="/funcionario/clases">Importar clases <span aria-hidden="true">↗</span></a></nav></header><main class="directory">
+<div class="page-heading"><h1>Horarios académicos</h1><p>Elige un estudiante y organiza su próxima semana.</p><a class="button-link" href="/estudiantes/nuevo">Crear estudiante <span aria-hidden="true">＋</span></a></div>
+<ul class="student-grid"><li class="student-card" th:each="e : ${estudiantes}"><a th:href="@{/estudiantes/{id}/horario(id=${e.id})}" ><span class="avatar" aria-hidden="true" th:text="${#strings.substring(e.nombre,0,1)}"></span><span th:text="${e.nombre}"></span><span class="card-arrow" aria-hidden="true">↗</span></a></li></ul>
+<p th:if="${#lists.isEmpty(estudiantes)}">El catálogo todavía no tiene estudiantes.</p>
+</main></body></html>

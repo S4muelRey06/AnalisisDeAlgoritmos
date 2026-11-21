@@ -33,6 +33,10 @@ public class Estudiante {
     @Column(nullable = false)
     private Double promedio;
 
+    @Column(columnDefinition = "TEXT")
+    private String horarioConfirmado;
+    private Double promedioConfirmado;
+
     @Column(updatable = false)
     private LocalDateTime fechaRegistro;
 

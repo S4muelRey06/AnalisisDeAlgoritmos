@@ -31,6 +31,7 @@ import jakarta.transaction.Transactional;
 
 import java.time.LocalTime;
 
+@org.springframework.context.annotation.Profile("demo")
 @Component
 @Transactional
 public class DataLoader implements CommandLineRunner {
@@ -58,6 +59,8 @@ public class DataLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+
+        if (materiaRepo.count() > 0) return;
 
         // 1. Profesores (Basados en los ejemplos del documento)
         Profesor prof1 = profesorRepo.save(new Profesor("Alexander Castillo Martinez"));
@@ -126,6 +129,15 @@ public class DataLoader implements CommandLineRunner {
         claseHorarioRepo.save(new ClaseHorario(clase2, hor2)); // Física Mecánica el Lunes 9-11
         claseHorarioRepo.save(new ClaseHorario(clase3, hor4)); // Matemáticas Discretas el Martes 11-13
 
+        Clase alternativa = new Clase();
+        alternativa.setMateria(mat1);
+        alternativa.setProfesor(prof1);
+        alternativa.setLugar(lugar2);
+        alternativa.setCupos(25);
+        alternativa = claseRepo.save(alternativa);
+        claseHorarioRepo.save(new ClaseHorario(alternativa, hor1));
+        claseHorarioRepo.save(new ClaseHorario(alternativa, hor6));
+
         // 7. Estudiantes de prueba (Basado en la pantalla de selección de estudiantes del mockup)
         estudianteRepo.save(new Estudiante("samuel@gmail.com", "Samuel Rey", 4.2));
         estudianteRepo.save(new Estudiante("mateo.zamora@javeriana.edu.co", "Mateo Zamora", 4.7));
@@ -133,6 +145,87 @@ public class DataLoader implements CommandLineRunner {
         estudianteRepo.save(new Estudiante("sara.caceres@javeriana.edu.co", "Sara Caceres", 4.4));
         estudianteRepo.save(new Estudiante("lucia.ortiz@javeriana.edu.co", "Lucia Ortiz", 3.8));
 
+        List<String> asignaturas = List.of("Bases de Datos", "Programación Orientada a Objetos",
+            "Cálculo Diferencial", "Cálculo Integral", "Probabilidad", "Estadística Aplicada",
+            "Sistemas Operativos", "Redes de Computadores", "Ingeniería de Software",
+            "Arquitectura de Computadores", "Inteligencia Artificial", "Análisis de Algoritmos");
+        List<String> docentes = List.of("Mónica Pardo", "Felipe Beltrán", "Adriana Nieto",
+            "Tomás Galindo", "Diana Cárdenas", "Julián Rojas", "Claudia Bernal", "Andrés Lozano",
+            "Paula Restrepo", "Ricardo Ávila", "Natalia Correa", "Daniel Quiroga");
+        List<Profesor> equipo = docentes.stream().map(Profesor::new).map(profesorRepo::save).toList();
+        List<String> dias = List.of("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado");
+        int[] horas = {8, 14, 18};
+        List<List<Horario>> semana = new ArrayList<>();
+        for (String dia : dias) {
+            List<Horario> turnos = new ArrayList<>();
+            for (int hora : horas) {
+                turnos.add(horarioRepo.save(new Horario(dia, LocalTime.of(hora, 0), LocalTime.of(hora + 2, 0))));
+            }
+            semana.add(turnos);
+        }
+        for (int i = 0; i < asignaturas.size(); i++) {
+            Materia materia = materiaRepo.save(new Materia(asignaturas.get(i)));
+            Lugar aula = lugarRepo.save(new Lugar(4L + i / 3, Integer.toString(201 + i % 3)));
+            for (int turno = 0; turno < horas.length; turno++) {
+                int capacidad = 24 + 6 * (i % 4);
+                Clase grupo = new Clase(equipo.get((i + turno) % equipo.size()), aula, materia, capacidad);
+                int inscritos = switch ((i + turno) % 5) {
+                    case 0 -> capacidad;
+                    case 1 -> capacidad / 3;
+                    case 2 -> capacidad / 2;
+                    case 3 -> capacidad - 3;
+                    default -> 0;
+                };
+                grupo.setCuposOcupados(inscritos);
+                grupo.setSumaPromedios(inscritos * (3.5 + (i + turno) % 10 / 10.0));
+                claseRepo.save(grupo);
+                int dia = (i + turno) % 3;
+                claseHorarioRepo.save(new ClaseHorario(grupo, semana.get(dia).get(turno)));
+                claseHorarioRepo.save(new ClaseHorario(grupo, semana.get(dia + 3).get(turno)));
+            }
+        }
+
+        List<String> nombres = List.of("Valentina", "Sebastián", "Gabriela", "Nicolás",
+            "Mariana", "Emilio", "Camila", "Simón", "Isabella", "Alejandro");
+        List<String> apellidos = List.of("Ariza", "Montoya", "Vargas", "Pinzón", "Ospina", "Salazar");
+        int consecutivo = 0;
+        for (String apellido : apellidos) {
+            for (String nombre : nombres) {
+                consecutivo++;
+                estudianteRepo.save(new Estudiante("estudiante" + consecutivo + "@example.org",
+                    nombre + " " + apellido, (31 + consecutivo * 7 % 19) / 10.0));
+            }
+        }
+        // Catálogo controlado para comprobar los niveles de la entrega.
+        Materia taller = materiaRepo.save(new Materia("Taller de Prototipos"));
+        Materia laboratorio = materiaRepo.save(new Materia("Laboratorio de Prototipos"));
+        Materia seminario = materiaRepo.save(new Materia("Seminario de Diseño"));
+        Materia proyecto = materiaRepo.save(new Materia("Proyecto Integrador"));
+        Lugar base = lugarRepo.save(new Lugar(10L, "401"));
+        Lugar cerca = lugarRepo.save(new Lugar(12L, "402"));
+        Lugar lejos = lugarRepo.save(new Lugar(18L, "403"));
+        Profesor ana = profesorRepo.save(new Profesor("Ana Solano"));
+        Profesor leo = profesorRepo.save(new Profesor("Leo Duarte"));
+        Profesor ines = profesorRepo.save(new Profesor("Inés Sierra"));
+        grupo(taller, ana, base, 10, 4.0, hor1, hor6);
+        grupo(laboratorio, leo, lejos, 10, 4.0, hor6);
+        grupo(laboratorio, ines, cerca, 20, 4.5, hor4);
+        grupo(seminario, leo, lejos, 6, 3.5, hor2);
+        grupo(seminario, ana, cerca, 16, 4.6, hor2);
+        grupo(seminario, ines, base, 10, 4.2, hor3);
+        grupo(proyecto, ana, base, 20, 4.6, hor5);
+        grupo(proyecto, leo, lejos, 8, 4.0, hor3);
         System.out.println("¡Datos iniciales cargados con éxito en la base de datos!");
+    }
+
+    private void grupo(Materia materia, Profesor profesor, Lugar lugar, int inscritos,
+                       double promedio, Horario... sesiones) {
+        Clase grupo = new Clase(profesor, lugar, materia, 20);
+        grupo.setCuposOcupados(inscritos);
+        grupo.setSumaPromedios(inscritos * promedio);
+        claseRepo.save(grupo);
+        for (Horario sesion : sesiones) {
+            claseHorarioRepo.save(new ClaseHorario(grupo, sesion));
+        }
     }
 }

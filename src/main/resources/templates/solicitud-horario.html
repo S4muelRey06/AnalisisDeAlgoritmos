@@ -1,14 +1,43 @@
-<!doctype html><html lang="es" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Preparar horario</title><link rel="stylesheet" href="/academico.css?v=3"></head><body><header class="app-header"><nav aria-label="Navegación principal"><a class="brand" href="/"><span class="brand-mark" aria-hidden="true">▦</span>Horarios<span class="brand-detail">académicos</span></a><a class="nav-link" href="/funcionario/clases">Importar clases <span aria-hidden="true">↗</span></a></nav></header><main class="request-page">
-<a class="back-link" href="/">← Cambiar estudiante</a><h1>Preparar horario</h1><p class="student-name" th:text="${estudiante.nombre}"></p><p role="alert" th:if="${error}" th:text="${error}"></p>
-<form method="post"><input type="hidden" name="solicitud_json" value=""><fieldset class="subjects"><legend>Materias y prioridades</legend>
-<div class="subject-row" th:each="m : ${materias}"><label><input type="checkbox" name="materia" th:value="${m.id}"><span th:text="${m.nombre}"></span></label>
-<select th:name="|prioridad_${m.id}|" th:aria-label="|Prioridad de ${m.nombre}|"><option>Alta</option><option selected>Media</option><option>Baja</option></select></div></fieldset>
-<fieldset class="choices"><legend>Franjas preferidas</legend><label th:each="f : ${ {'mañana','tarde','noche'} }"><input type="checkbox" name="franja" th:value="${f}"><span th:text="${f}"></span></label></fieldset>
-<fieldset><legend>Profesores preferidos</legend>
+<!doctype html><html lang="es" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Preparar horario</title><link rel="stylesheet" href="/academico.css?v=9"></head><body><header class="app-header"><nav aria-label="Navegación principal"><a class="brand" href="/"><span class="brand-mark" aria-hidden="true">▦</span>Horarios<span class="brand-detail">académicos</span></a><a class="nav-link" href="/funcionario/clases">Importar clases <span aria-hidden="true">↗</span></a></nav></header><main class="request-page">
+<a class="back-link" href="/">← Cambiar estudiante</a><div class="request-hero">
+<p class="request-eyebrow">PLANIFICACION ACADEMICA</p>
+<h1>Bienvenido, <span th:text="${estudiante.nombre}">estudiante</span></h1>
+<p>Organiza tus materias y preferencias para generar tu horario.</p>
+</div><p role="alert" th:if="${error}" th:text="${error}"></p>
+<form method="post"><input type="hidden" name="solicitud_json" value=""><fieldset class="subjects"><legend class="sr-only">Materias y prioridades</legend><h2 class="section-heading">Materias y prioridades</h2>
+<section class="catalogo-materias" aria-labelledby="catalogo-titulo">
+    <div class="catalogo-encabezado">
+        <div>
+            <h3 id="catalogo-titulo">Cat&aacute;logo de materias registradas</h3>
+            <p>Estas materias existen en la base de datos. Selecciona una para completar su nombre abajo.</p>
+        </div>
+        <label class="catalogo-busqueda">Buscar materia
+            <input id="buscar-materia-catalogo" type="search" placeholder="Buscar en el cat&aacute;logo" autocomplete="off">
+        </label>
+    </div>
+    <ul id="catalogo-lista" class="catalogo-lista" aria-label="Materias de la base de datos">
+        <li class="catalogo-item" th:each="m : ${materias}">
+            <button type="button" class="catalogo-boton" th:attr="data-nombre=${m.nombre}" th:text="${m.nombre}">Materia</button>
+        </li>
+    </ul>
+    <p id="catalogo-sin-resultados" class="catalogo-sin-resultados" hidden>No se encontraron materias con ese nombre.</p>
+    <p class="catalogo-nota">Que una materia figure aqu&iacute; no garantiza que existan grupos o cupos disponibles.</p>
+</section>
+<p>Escribe las materias que deseas cursar y agrega cada una con su nivel de prioridad.</p>
+<div class="subject-entry">
+<label for="materia-nombre">Nombre de la materia <input id="materia-nombre" type="text" maxlength="100" placeholder="Ej. Estructuras de Datos" autocomplete="off"></label>
+<label for="materia-prioridad">Prioridad <select id="materia-prioridad"><option>Alta</option><option selected>Media</option><option>Baja</option></select></label>
+<button type="button" id="agregar-materia">+ Agregar materia</button>
+</div>
+<p id="error-materia" role="alert" hidden></p>
+<ul id="materias-agregadas" class="subject-list" aria-label="Materias agregadas"></ul>
+</fieldset>
+<fieldset class="choices"><legend class="sr-only">Franjas preferidas</legend><h2 class="section-heading">Franjas preferidas</h2><label th:each="f : ${ {'mañana','tarde','noche'} }"><input type="checkbox" name="franja" th:value="${f}"><span th:text="${f}"></span></label></fieldset>
+<fieldset><legend class="sr-only">Profesores preferidos</legend><h2 class="section-heading">Profesores preferidos</h2>
 <label>Archivo con nombres completos <input type="file" id="archivo-profesores" accept=".txt,.json"></label>
 <p>Archivo de texto UTF-8 con un nombre por línea o un JSON con una lista de nombres. Una lista vacía omite esta preferencia.</p>
 <p id="estado-profesores" role="status"></p></fieldset>
-<fieldset class="choices"><legend>Volumen de compañeros</legend><label><input type="radio" name="volumen" value="alto" required>Alto</label><label><input type="radio" name="volumen" value="bajo" required>Bajo</label></fieldset>
-<fieldset class="choices"><legend>Cercanía</legend><label><input type="radio" name="cercania" value="0" checked>0 · Sin preferencia</label><label><input type="radio" name="cercania" value="1">1 · Edificios cercanos</label><label><input type="radio" name="cercania" value="2">2 · Mismo edificio</label></fieldset>
-<label>Promedio actual <input name="promedio" type="number" min="0" max="5" step="any" required th:value="${estudiante.promedio}"></label>
+<fieldset class="choices"><legend class="sr-only">Volumen de compañeros</legend><h2 class="section-heading">Volumen de compañeros</h2><label><input type="radio" name="volumen" value="alto" required>Alto</label><label><input type="radio" name="volumen" value="bajo" required>Bajo</label></fieldset>
+<fieldset class="choices"><legend class="sr-only">Cercanía</legend><h2 class="section-heading">Cercanía</h2><label><input type="radio" name="cercania" value="0" checked>0 · Sin preferencia</label><label><input type="radio" name="cercania" value="1">1 · Edificios cercanos</label><label><input type="radio" name="cercania" value="2">2 · Mismo edificio</label></fieldset>
+<label class="average-field"><span>Promedio actual</span><input name="promedio" type="number" min="0" max="5" step="any" required th:value="${estudiante.promedio}"></label>
 <div class="summary"><h2>Resumen de solicitud</h2><ol id="resumen"></ol><p id="resumen-preferencias"></p></div><div class="form-actions"><button class="secondary" type="button" id="descargar">Descargar solicitud JSON</button><button>Generar horario <span aria-hidden="true">→</span></button></div></form></main><script src="/solicitud.js"></script></body></html>

@@ -1,56 +1,177 @@
 let profesoresArchivo = [];
 let leyendoProfesores = false;
+
 const form = document.querySelector("form");
-const seleccion = new Set();
+const materiasElegidas = [];
+const campoMateria = document.querySelector("#materia-nombre");
+const campoPrioridad = document.querySelector("#materia-prioridad");
+const listaMaterias = document.querySelector("#materias-agregadas");
+const errorMateria = document.querySelector("#error-materia");
+const buscadorCatalogo = document.querySelector("#buscar-materia-catalogo");
+const botonesCatalogo = document.querySelectorAll(".catalogo-boton");
+
+// Permite buscar tanto "Matematicas" como "Matemáticas".
+function normalizarNombre(texto) {
+    return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function mostrarErrorMateria(mensaje) {
+    errorMateria.textContent = mensaje;
+    errorMateria.hidden = !mensaje;
+}
+
 function resumen() {
     const lista = document.querySelector("#resumen");
     lista.replaceChildren();
-    const campos = new FormData(form);
-    document.querySelector("#resumen-preferencias").textContent =
-        "Franjas: "+(campos.getAll("franja").join(", ") || "todas")+
-        ". Profesores: "+(profesoresArchivo.join(", ") || "sin preferencia")+
-        ". Volumen: "+(campos.get("volumen") || "pendiente")+
-        ". Cercanía: "+campos.get("cercania")+". Promedio: "+campos.get("promedio");
-    for (const id of seleccion) {
-        const fila = form.querySelector('input[name="materia"][value="'+id+'"]').closest("div");
+
+    for (const materia of materiasElegidas) {
         const item = document.createElement("li");
-        item.textContent = fila.querySelector("span").textContent+" · "+fila.querySelector("select").value;
+        item.textContent = materia.nombre + " · Prioridad " + materia.prioridad;
         lista.append(item);
     }
+
+    const campos = new FormData(form);
+    document.querySelector("#resumen-preferencias").textContent =
+        "Franjas: " + (campos.getAll("franja").join(", ") || "todas") +
+        ". Profesores: " + (profesoresArchivo.join(", ") || "sin preferencia") +
+        ". Volumen: " + (campos.get("volumen") || "pendiente") +
+        ". Cercanía: " + campos.get("cercania") + ". Promedio: " + campos.get("promedio");
 }
-form.addEventListener("change", event => {
-    const campo = event.target;
-    if (campo.name === "materia") {
-        if (campo.checked) seleccion.add(campo.value);
-        else seleccion.delete(campo.value);
+
+function dibujarMaterias() {
+    listaMaterias.replaceChildren();
+
+    for (const materia of materiasElegidas) {
+        const fila = document.createElement("li");
+        fila.className = "subject-row";
+
+        const nombre = document.createElement("strong");
+        nombre.className = "subject-name";
+        nombre.textContent = materia.nombre;
+
+        const prioridad = document.createElement("select");
+        prioridad.setAttribute("aria-label", "Prioridad de " + materia.nombre);
+        for (const nivel of ["Alta", "Media", "Baja"]) {
+            const opcion = document.createElement("option");
+            opcion.value = nivel;
+            opcion.textContent = nivel;
+            opcion.selected = nivel === materia.prioridad;
+            prioridad.append(opcion);
+        }
+        prioridad.addEventListener("change", () => {
+            materia.prioridad = prioridad.value;
+            resumen();
+        });
+
+        const quitar = document.createElement("button");
+        quitar.type = "button";
+        quitar.className = "secondary";
+        quitar.textContent = "Quitar";
+        quitar.setAttribute("aria-label", "Quitar " + materia.nombre);
+        quitar.addEventListener("click", () => {
+            materiasElegidas.splice(materiasElegidas.indexOf(materia), 1);
+            dibujarMaterias();
+        });
+
+        fila.append(nombre, prioridad, quitar);
+        listaMaterias.append(fila);
     }
     resumen();
-});
-for (const campo of form.querySelectorAll('input[name="materia"]:checked')) seleccion.add(campo.value);
-resumen();
-form.addEventListener("formdata", event => {
-    event.formData.delete("materia");
-    for (const id of seleccion) event.formData.append("materia", id);
+}
+
+function agregarMateria() {
+    const nombreIngresado = campoMateria.value.trim();
+    if (!nombreIngresado) {
+        mostrarErrorMateria("Escribe el nombre de una materia.");
+        campoMateria.focus();
+        return;
+    }
+
+    // El nombre se toma del catálogo para enviarlo igual que está en la BD.
+    let nombreCatalogo = "";
+    for (const boton of botonesCatalogo) {
+        if (normalizarNombre(boton.getAttribute("data-nombre")) === normalizarNombre(nombreIngresado)) {
+            nombreCatalogo = boton.getAttribute("data-nombre");
+            break;
+        }
+    }
+    if (!nombreCatalogo) {
+        mostrarErrorMateria("La materia no está registrada en la base de datos. Consulta el catálogo.");
+        campoMateria.focus();
+        return;
+    }
+    if (materiasElegidas.some(materia => materia.nombre === nombreCatalogo)) {
+        mostrarErrorMateria("Esta materia ya fue agregada.");
+        campoMateria.focus();
+        return;
+    }
+
+    materiasElegidas.push({ nombre: nombreCatalogo, prioridad: campoPrioridad.value });
+    campoMateria.value = "";
+    mostrarErrorMateria("");
+    dibujarMaterias();
+    campoMateria.focus();
+}
+
+// El catálogo solo completa el campo. La materia se agrega con el botón del formulario.
+for (const boton of botonesCatalogo) {
+    boton.addEventListener("click", () => {
+        campoMateria.value = boton.getAttribute("data-nombre");
+        mostrarErrorMateria("");
+        campoMateria.focus();
+    });
+}
+
+buscadorCatalogo.addEventListener("input", () => {
+    const busqueda = normalizarNombre(buscadorCatalogo.value);
+    let encontrados = 0;
+    for (const boton of botonesCatalogo) {
+        const coincide = normalizarNombre(boton.getAttribute("data-nombre")).includes(busqueda);
+        boton.parentElement.hidden = !coincide;
+        if (coincide) encontrados++;
+    }
+    document.querySelector("#catalogo-sin-resultados").hidden = encontrados > 0;
 });
 
+document.querySelector("#agregar-materia").addEventListener("click", agregarMateria);
+campoMateria.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        agregarMateria();
+    }
+});
+form.addEventListener("change", resumen);
+form.querySelector('[name="promedio"]').addEventListener("input", resumen);
+
+// Mantiene el JSON que ya procesa HorarioController.
 function descargarSolicitud() {
     if (leyendoProfesores) return false;
-    if (!form.reportValidity() || !seleccion.size) {
-        if (!seleccion.size) alert("Selecciona al menos una materia.");
+    if (campoMateria.value.trim()) {
+        mostrarErrorMateria("Pulsa 'Agregar materia' para incluir el nombre que escribiste.");
+        campoMateria.focus();
         return false;
     }
-    const materias = {};
-    for (const id of seleccion) {
-        const fila = form.querySelector('input[name="materia"][value="'+id+'"]').closest("div");
-        materias[fila.querySelector("span").textContent] = "Prioridad "+fila.querySelector("select").value;
+    if (!form.reportValidity() || materiasElegidas.length === 0) {
+        if (materiasElegidas.length === 0) mostrarErrorMateria("Agrega al menos una materia.");
+        return false;
     }
-    const profesores = profesoresArchivo;
+
+    const materias = {};
+    for (const materia of materiasElegidas) {
+        materias[materia.nombre] = "Prioridad " + materia.prioridad;
+    }
     const datos = new FormData(form);
-    const detalles = {franjas_horarias: datos.getAll("franja"), cercania: Number(datos.get("cercania")),
-        volumen_de_compañeros: datos.get("volumen"), promedio: Number(datos.get("promedio"))};
-    const contenido = JSON.stringify({materias, profesores, detalles}, null, 2);
+    const detalles = {
+        franjas_horarias: datos.getAll("franja"),
+        cercania: Number(datos.get("cercania")),
+        volumen_de_compañeros: datos.get("volumen"),
+        promedio: Number(datos.get("promedio"))
+    };
+    const contenido = JSON.stringify({ materias, profesores: profesoresArchivo, detalles }, null, 2);
     form.elements.solicitud_json.value = contenido;
-    const url = URL.createObjectURL(new Blob([contenido], {type:"application/json"}));
+
+    const url = URL.createObjectURL(new Blob([contenido], { type: "application/json" }));
     const enlace = document.createElement("a");
     enlace.href = url;
     enlace.download = "solicitud-horario.json";
@@ -58,12 +179,13 @@ function descargarSolicitud() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     return true;
 }
+
 document.querySelector("#descargar").addEventListener("click", descargarSolicitud);
 form.addEventListener("submit", event => {
     if (!descargarSolicitud()) event.preventDefault();
 });
 
-
+// Lectura de profesores: la misma lógica del proyecto original.
 document.querySelector("#archivo-profesores").addEventListener("change", async event => {
     const campo = event.target;
     const archivo = campo.files[0];
@@ -79,7 +201,7 @@ document.querySelector("#archivo-profesores").addEventListener("change", async e
                 throw new Error("Se requiere una lista de nombres.");
             profesoresArchivo = [...new Set(nombres.map(n => n.trim()))];
         }
-        document.querySelector("#estado-profesores").textContent = profesoresArchivo.length+" profesores leídos.";
+        document.querySelector("#estado-profesores").textContent = profesoresArchivo.length + " profesores leídos.";
     } catch (error) {
         campo.setCustomValidity(error.message);
         document.querySelector("#estado-profesores").textContent = error.message;
@@ -88,3 +210,5 @@ document.querySelector("#archivo-profesores").addEventListener("change", async e
         resumen();
     }
 });
+
+dibujarMaterias();

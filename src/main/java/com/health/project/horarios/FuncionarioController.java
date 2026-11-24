@@ -7,7 +7,9 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
+/*
+CARGA NUEVAS CLASES DESDE EN CSV. SIMPLEMENTE ESO
+*/
 @Controller
 @RequestMapping("/funcionario/clases")
 public class FuncionarioController {

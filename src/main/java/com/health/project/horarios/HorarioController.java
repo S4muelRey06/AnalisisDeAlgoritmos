@@ -12,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+
+//RECIBE LAS SOLICITUDES, GENERA LAS PROPUESTAS Y CREA LOS HORARIOS
 @Controller
 public class HorarioController {
     private final EstudianteRepository estudiantes;
@@ -29,12 +31,15 @@ public class HorarioController {
         this.json = json;
     }
 
+    
+    //CARGA LOS ESTUDIANTES EN LA PÁGINA INICIAL, LOS TRAE DESDE BD
     @GetMapping("/")
     String inicio(Model model) {
         model.addAttribute("estudiantes", estudiantes.findAll());
         return "index";
     }
 
+    //MUESTRA EL FORMULARIO PARA CADA ESTUDIANTE, DESPLIEGA LA PANTALLA PRINCIPAL CON EL ID DE ESTUDIANTE
     @GetMapping("/estudiantes/{id}/horario")
     String formulario(@PathVariable long id, Model model) {
         Estudiante estudiante = estudiante(id);
@@ -44,6 +49,7 @@ public class HorarioController {
         return "solicitud-horario";
     }
 
+    //TRAE EL HORARIO DEL ESTUDIANTE QUE ESTÁ ARMADO DE MOMENTO EN LA BD, QUE ES DE TIPO JSON
     @GetMapping(value="/estudiantes/{id}/horario/guardado", produces="application/json")
     @ResponseBody
     String guardado(@PathVariable long id) {
@@ -56,6 +62,12 @@ public class HorarioController {
         return estudiantes.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
+    //OJO AQUI
+    //1. AQUI SE RECIBE UN OBJETO "SolicitudHorario"
+    //2. Se llama a camposSolicitud() para transformar los datos de 
+    //3. Se crea un ExtendedModelMap, que es un objeto de Springboot y funciona como un mapa
+    //3. Se llama al método generar de "Planificador" enviando el objeto anterior como parámetro, ahí ocurre el proceso de programación dinámica
+    //4. Devuelve un objeto de tipo resultado, que contiene las salidas (se puede revisar en generadorHorario)
     @PostMapping(value="/estudiantes/{id}/horario", consumes="application/json", produces="application/json")
     @ResponseBody
     @Transactional
@@ -66,6 +78,11 @@ public class HorarioController {
         if (model.containsAttribute("error")) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Solicitud inválida");
         return (GeneradorHorario.Resultado) model.get("resultado");
     }
+
+    //Recibe la información del formulario, es decir las materias con sus prioridades y las otras preferencias
+    //Valida que la materia exista en BD
+    //Convierte los nombres de las materias en id, igual que los profesores y niveles de prioridad
+    //Agrega a los detalles el resto de preferencias
     private MultiValueMap<String,String> camposSolicitud(SolicitudHorario solicitud) {
         if (solicitud.materias() == null || solicitud.detalles() == null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Faltan materias o detalles");
@@ -91,6 +108,12 @@ public class HorarioController {
         return campos;
     }
 
+    // ESTE ES EL MÁS IMPORTANTE DE ESTE ARCHIVO:
+    // BLOQUEA LA SELECCION DEL ESTUDIANTE
+    // ASIGNA NUMEROS A LAS PRIORIDADES 0=ALTA 1=MEDIA 2=BAJA Y LOS ENLAZA A LAS MATERIAS
+    // ORDENA LAS MATERIAS POR PRIORIDAD (NIVEL 1 DEL ALGORITMO - EL RESTO DE NIVELES ESTÁN EN GENERADORHORARIO)
+    // HACE EL MÉTODO GENERAR DE GENERADOR HORARIO QUE ES EL CENTRO DEL ALGORITMO
+    // EL HORARIO PROPUESTO SE SERIALIZA A JSON Y SE GUARDA EN EL ESTUDIANTE
     @PostMapping(value="/estudiantes/{id}/horario", consumes="application/x-www-form-urlencoded")
     @Transactional
     String generar(@PathVariable long id, @RequestParam MultiValueMap<String,String> campos, Model model) {
@@ -133,11 +156,14 @@ public class HorarioController {
         return "resultado-horario";
     }
 
+    
+    // ESTE GENERA UN IDENTIFICADOR PARA LA VERSIÓN DEL HORARIO, PARA DISTINGUIR LAS PROPUESTAS
     private String firma(Estudiante estudiante) {
         String propuesta = estudiante.getId()+"|"+estudiante.getPromedio()+"|"+estudiante.getHorario();
         return UUID.nameUUIDFromBytes(propuesta.getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
     }
 
+    // Extrae los identificadorees de las clases metidas en una propuesta de horarios
     private Set<Long> grupos(String horario) {
         Set<Long> grupos = new TreeSet<>();
         if (horario != null) {
@@ -146,6 +172,10 @@ public class HorarioController {
         }
         return grupos;
     }
+
+    //Se compara la firma en la propuesta del horario. No se puede guardar si hubo cambios
+    //Bloquea las clases antes de hacer una confirmación
+    //Actualiza los cupos y el promedio de calificación de la clase
 
     @PostMapping("/estudiantes/{id}/horario/confirmar")
     @Transactional

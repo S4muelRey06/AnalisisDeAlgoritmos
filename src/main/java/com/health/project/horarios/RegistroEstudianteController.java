@@ -10,6 +10,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+/*
+- ESTE CONTROLADOR SIMPLEMENTE CREA NUEVOS ESTUDIANTES EN LA PLATAFORMA
+- TIENE EL FORMULARIO
+- LA MIGRACIÓN A BD DEL USUARIO CON NOMBRE, CORREO Y PROMEDIO
+*/
 
 @Controller
 public class RegistroEstudianteController {
